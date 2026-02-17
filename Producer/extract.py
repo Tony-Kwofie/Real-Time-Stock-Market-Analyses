@@ -23,7 +23,7 @@ def connect_to_api():
             logger.info(f"{stock} Stock successfully loaded")
 
             json_response.append(data)
-            
+
         except requests.exceptions.RequestException as e:
             logger.error(f"Error on stock {stock}: {e}")
             break
@@ -32,22 +32,26 @@ def connect_to_api():
 
 
 def extract_json(response):
-    records=[]
-    
+    records = []
+
     for data in response:
-        symbol = data['meta data']['2. symbol']
-        
-        for data_str, metrics in data ['TIme series(5min)'].iterm:
+
+        if "Meta Data" not in data:
+            print("Skipping unexpected response:", data)
+            continue
+
+        symbol = data["Meta Data"]["2. Symbol"]
+
+        for date_str, metrics in data["Time Series (5min)"].items():
             record = {
-                "symbol" = symbol,
-                "date" = data_str,
-                "open" = metrics["1. open"],
-                "close" = metrics["4. close"],
-                "high" = metrics["2. high"],
-                "low" = metrics["3. low"]
-                
+                "symbol": symbol,
+                "date": date_str,
+                "open": metrics["1. open"],
+                "high": metrics["2. high"],
+                "low": metrics["3. low"],
+                "close": metrics["4. close"],
             }
-            
-            records.append[record] 
-            
-    return records             
+
+            records.append(record)
+
+    return records
