@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
@@ -12,13 +11,4 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-BASE_URL = "alpha-vantage.p.rapidapi.com"
-
-url = f"https://{BASE_URL}/query"
-
-api_key = os.getenv("API_KEY")
-
-headers = {
-    "x-rapidapi-key": api_key,
-    "x-rapidapi-host": BASE_URL,
-}
+url = "https://www.alphavantage.co/query"

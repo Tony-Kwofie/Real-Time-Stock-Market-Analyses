@@ -1,25 +1,27 @@
+import time
 from extract import connect_to_api, extract_json
+from config import logger
 
 
-def main():
-    response = connect_to_api()
+def run_producer():
+    while True:
+        try:
+            logger.info("Starting new fetch cycle...")
 
-    data = extract_json(response)
+            response = connect_to_api()
+            records = extract_json(response)
 
-    for stock in data:
-        results = {
-            "date": stock["date"],
-            "symbol": stock["symbol"],
-            "open": stock["open"],
-            "high": stock["high"],
-            "low": stock["low"],
-            "close": stock["close"],
-        }
+            logger.info(f"Fetched {len(records)} records")
 
-        print(results)
+            # Here you would send to Kafka or DB
 
-    return None
+            logger.info("Sleeping for 90 seconds...\n")
+            time.sleep(90)  # Wait 1 minute before next request
+
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}")
+            time.sleep(30)  # Wait before retrying
 
 
 if __name__ == "__main__":
-    main()
+    run_producer()
