@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 from config import logger, url
 
@@ -33,23 +34,31 @@ def connect_to_api():
             response.raise_for_status()
             data = response.json()
 
-            # 🚨 Alpha Vantage rate limit
+            #  Rate limit handling
             if "Note" in data:
-                logger.warning(f"API limit reached for {stock}: {data['Note']}")
-                continue
+                logger.warning(f"API rate limit reached for {stock}: {data['Note']}")
+                break  # stop further calls to avoid being blocked
 
-            # 🚨 Invalid API key
+            #  Invalid API key
             if "Error Message" in data:
-                logger.warning(f"Invalid API call for {stock}: {data['Error Message']}")
+                logger.error(f"Invalid API call for {stock}: {data['Error Message']}")
                 continue
 
-            # 🚨 Unexpected structure
+            #  Premium endpoint message
+            if "Information" in data:
+                logger.warning(f"API information for {stock}: {data['Information']}")
+                continue
+
+            #  Unexpected structure
             if "Time Series (5min)" not in data:
-                logger.warning(f"No time series data returned for {stock}: {data}")
+                logger.warning(f"No time series data returned for {stock}")
                 continue
 
             logger.info(f"{stock} stock successfully loaded")
             json_response.append(data)
+
+            # Respect free tier limit (1 request per second)
+            time.sleep(1)
 
         except requests.exceptions.RequestException as e:
             logger.error(f"HTTP error for stock {stock}: {e}")
