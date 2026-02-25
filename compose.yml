@@ -1,20 +1,12 @@
+version: "3.9"
 
-
-# -------------------- SERVICES --------------------
 services:
 
+  # -------------------- SPARK MASTER --------------------
   spark-master:
     image: spark:3.5.1-python3
     container_name: spark-master
-    command:
-      - "/opt/spark/bin/spark-class"
-      - "org.apache.spark.deploy.master.Master"
-      - "--host"
-      - "spark-master"
-      - "--port"
-      - "7077"
-      - "--webui-port"
-      - "8080"
+    command: [ "/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master", "--host", "spark-master", "--port", "7077", "--webui-port", "8080" ]
     environment:
       - SPARK_MODE=master
       - SPARK_MASTER_HOST=spark-master
@@ -26,15 +18,11 @@ services:
     networks:
       - stock_data
 
+  # -------------------- SPARK WORKER --------------------
   spark-worker:
     image: spark:3.5.1-python3
     container_name: spark-worker
-    command:
-      - "/opt/spark/bin/spark-class"
-      - "org.apache.spark.deploy.worker.Worker"
-      - "spark://spark-master:7077"
-      - "--webui-port"
-      - "8081"
+    command: [ "/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077", "--webui-port", "8081" ]
     environment:
       - SPARK_WORKER_CORES=2
       - SPARK_WORKER_MEMORY=2G
@@ -45,28 +33,33 @@ services:
     networks:
       - stock_data
 
+  # -------------------- STREAM CONSUMER --------------------
   consumer:
     build:
       context: ./consumer
-      dockerfile: dockerfile   # Change to Dockerfile if you rename it
-    image: stream_consumer
-    container_name: consumer
+    container_name: stream_consumer
     depends_on:
       - spark-master
       - kafka
+    env_file:
+      - .env
     restart: unless-stopped
     volumes:
       - ivy_cache:/opt/spark/work-dir/.ivy2
+      - ./consumer:/opt/spark/work-dir/apps
     networks:
       - stock_data
 
+  # -------------------- KAFKA (KRaft Mode) --------------------
   kafka:
-    image: confluentinc/cp-kafka:7.4.10
+    build: ./kafka
+    image: kafka_monitor:v1
     container_name: kafka
     hostname: kafka
     ports:
       - "9092:9092"
       - "9094:9094"
+      - "7071:7071"
     environment:
       KAFKA_KRAFT_MODE: "true"
       KAFKA_PROCESS_ROLES: controller,broker
@@ -85,15 +78,17 @@ services:
       KAFKA_LOG_RETENTION_HOURS: 168
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       CLUSTER_ID: "jbzXiYiPQ8a2ejaWHK4Q3w"
-
+      KAFKA_OPTS: -javaagent:/usr/app/jmx_prometheus_javaagent.jar=7071:/usr/app/prom-jmx-agent-config.yml
     volumes:
       - kafka_data:/var/lib/kafka/data
     networks:
       - stock_data
+      - monitoring
 
+  # -------------------- KAFKA UI --------------------
   kafka-ui:
-    container_name: kafka-ui
     image: provectuslabs/kafka-ui:v0.7.2
+    container_name: kafka-ui
     ports:
       - "8085:8080"
     depends_on:
@@ -105,8 +100,9 @@ services:
     networks:
       - stock_data
 
+  # -------------------- POSTGRES --------------------
   postgres:
-    image: debezium/postgres:17
+    image: postgres:15
     container_name: postgres_db
     restart: unless-stopped
     environment:
@@ -116,14 +112,44 @@ services:
     ports:
       - "5434:5432"
     volumes:
-      - postgres_data:/var/lib/postgres/data
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - stock_data
+      - monitoring
 
+  # -------------------- POSTGRES EXPORTER --------------------
+  postgres_exporter:
+    image: prometheuscommunity/postgres-exporter:v0.17.1
+    container_name: postgres_exporter
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/stock_data?sslmode=disable"
+    ports:
+      - "9187:9187"
+    depends_on:
+      - postgres
+    networks:
+      - monitoring
+
+  # -------------------- KAFKA EXPORTER --------------------
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.9.0
+    container_name: kafka_exporter
+    restart: unless-stopped
+    depends_on:
+      - kafka
+    ports:
+      - "9308:9308"
+    command:
+      - "--kafka.server=kafka:9092"
+    networks:
+      - monitoring
+
+  # -------------------- PGADMIN --------------------
   pgadmin:
     image: dpage/pgadmin4:9
     container_name: pgadmin
-    restart: always
+    restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
       PGADMIN_DEFAULT_PASSWORD: admin
@@ -134,6 +160,35 @@ services:
     networks:
       - stock_data
 
+  # -------------------- PROMETHEUS --------------------
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - monitoring
+
+  # -------------------- GRAFANA --------------------
+  grafana:
+    image: grafana/grafana:12.0
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    volumes:
+      - grafana:/var/lib/grafana
+      - ./grafana:/etc/grafana/provisioning/datasources
+    networks:
+      - monitoring
 
 # -------------------- VOLUMES --------------------
 volumes:
@@ -141,8 +196,9 @@ volumes:
   kafka_data:
   ivy_cache:
   postgres_data:
+  grafana:
 
-
-# -------------------- NETWORKS --------------------
+    # -------------------- NETWORKS --------------------
 networks:
   stock_data:
+  monitoring:
