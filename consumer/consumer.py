@@ -1,98 +1,50 @@
-# ==========================================
-# Imports
-# ==========================================
-
-import os
-
 from pyspark.sql import SparkSession
-from pyspark.sql.types import (
-    StructType,
-    StructField,
-    StringType,
-    FloatType,
-)
-from pyspark.sql.functions import (
-    from_json,
-    col,
-    to_timestamp,
-)
+from pyspark.sql.types import TimestampType
+from pyspark.sql.functions import from_json, col
+from pyspark.sql import DataFrame
+from config import postgres_config, checkpoint_dir, kafka_data_schema
 
-# ==========================================
-# Checkpoint Directory
-# ==========================================
-
-checkpoint_dir = "/tmp/checkpoint/kafka_to_postgres"
-
-# (No need to manually create directory in Spark containers)
-
-# ==========================================
-# Kafka Schema (Matches extract_json output)
-# ==========================================
-
-kafka_data_schema = StructType(
-    [
-        StructField("symbol", StringType(), True),
-        StructField("date", StringType(), True),
-        StructField("open", FloatType(), True),
-        StructField("high", FloatType(), True),
-        StructField("low", FloatType(), True),
-        StructField("close", FloatType(), True),
-    ]
-)
-
-# ==========================================
-# Spark Session
-# ==========================================
-
+# Initialize Spark session
 spark = SparkSession.builder.appName("KafkaSparkStreaming").getOrCreate()
 
-spark.sparkContext.setLogLevel("WARN")
-
-# ==========================================
-# Read Stream From Kafka
-# ==========================================
-
-raw_df = (
+# Read stream from Kafka
+df = (
     spark.readStream.format("kafka")
     .option("kafka.bootstrap.servers", "kafka:9092")
     .option("subscribe", "stock_analysis")
+    .option("kafka.group.id", "spark-consumer-group")
     .option("startingOffsets", "latest")
     .option("failOnDataLoss", "false")
     .load()
 )
 
-# ==========================================
-# Parse JSON
-# ==========================================
-
+# Convert Kafka value (JSON string) to structured columns
 parsed_df = (
-    raw_df.selectExpr("CAST(value AS STRING) as json_value")
-    .select(from_json(col("json_value"), kafka_data_schema).alias("data"))
+    df.selectExpr("CAST(value AS STRING)")
+    .select(from_json(col("value"), kafka_data_schema).alias("data"))
     .select("data.*")
 )
 
-# ==========================================
-# Cast Proper Types
-# ==========================================
-
-processed_df = parsed_df.withColumn("date", to_timestamp(col("date"))).select(
-    "date",
-    "symbol",
-    "open",
-    "high",
-    "low",
-    "close",
+# Select and cast columns
+processed_df = parsed_df.select(
+    col("date").cast(TimestampType()).alias("date"),
+    col("high"),
+    col("low"),
+    col("open"),
+    col("close"),
+    col("symbol"),
 )
 
-# ==========================================
-# Write To Console (Debug Mode)
-# ==========================================
 
+def write_to_postgres(batch_df: DataFrame, batch_id: int) -> None:
+    batch_df.write.format("jdbc").mode("append").options(**postgres_config).save()
+
+
+# Stream to PostgreSQL
 query = (
-    processed_df.writeStream.outputMode("append")
-    .format("console")
-    .option("truncate", "false")
+    processed_df.writeStream.foreachBatch(write_to_postgres)
     .option("checkpointLocation", checkpoint_dir)
+    .outputMode("append")
     .start()
 )
 
