@@ -1,231 +1,259 @@
-# 🚀 Real-Time Stock Market Data Pipeline
+# 📊 Real-Time Stock Market Data Engineering Platform
 
-A fully containerized real-time data engineering pipeline built using:
+![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
+![Apache Kafka](https://img.shields.io/badge/Apache%20Kafka-Streaming-black.svg)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-blue.svg)
+![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED.svg)
+![Prometheus](https://img.shields.io/badge/Monitoring-Prometheus-E6522C.svg)
+![Architecture](https://img.shields.io/badge/Architecture-Event--Driven-green.svg)
+![Status](https://img.shields.io/badge/Status-Production%20Grade-success.svg)
 
-- 🐍 Python  
-- 📨 Apache Kafka  
-- ⚡ PySpark  
-- 🐘 PostgreSQL  
-- 🐳 Docker & Docker Compose  
-- 📊 Power BI (Visualization – Planned)  
-
----
-
-## 📌 Project Overview
-
-This project implements an end-to-end real-time stock market data pipeline.
-
-The system ingests stock data from the Alpha Vantage API, streams it through Kafka, processes it with Spark, and stores it in PostgreSQL for visualization.
+> A scalable, event-driven, production-grade real-time data engineering platform for ingesting, streaming, processing, storing, and monitoring live stock market data.
 
 ---
 
-## 🏗️ Architecture
+# 📌 Executive Summary
 
-```
-Alpha Vantage API
-        ↓
-   Python Producer
-        ↓
-      Kafka
-        ↓
-      Spark
-        ↓
-   PostgreSQL
-        ↓
-     Power BI
-```
+This platform simulates real-world financial data infrastructure using distributed streaming systems and containerized services.
 
-All services are orchestrated using Docker Compose.
+It demonstrates practical implementation of:
+
+- Real-time event streaming
+- Producer–consumer architecture
+- Distributed message brokering (Kafka)
+- Persistent analytical storage (PostgreSQL)
+- Infrastructure monitoring (Prometheus)
+- Docker-based service orchestration
+
+The system is engineered with scalability, reliability, and observability as core design principles.
 
 ---
 
-## 🐳 Dockerized Services
+# 🏗️ System Architecture
 
-| Service        | Image Used                        | Port |
-|---------------|-----------------------------------|------|
-| Kafka         | confluentinc/cp-kafka:7.4.10      | 9092 |
-| Spark Master  | spark:3.5.1-python3               | 7077 |
-| Spark Worker  | spark:3.5.1-python3               | —    |
-| PostgreSQL    | debezium/postgres:17              | 5434 |
-| pgAdmin       | dpage/pgadmin4:9                  | 5050 |
-| Kafka UI      | provectuslabs/kafka-ui:v0.7.2     | 8085 |
-| Producer      | Custom Docker image               | —    |
+## 📌 Real-Time Pipeline Overview
+
+<p align="center">
+  <img src="img/real_time_pipeline.png" alt="Real-Time Stock Market Data Pipeline Architecture" width="950">
+</p>
 
 ---
 
-## 🔗 Access Services (Local Development)
+## 🔄 Data Flow Explanation
 
-Once containers are running:
-
-| Service         | URL |
-|----------------|-----|
-| Kafka UI        | http://localhost:8085 |
-| pgAdmin         | http://localhost:5050 |
-| Spark Master UI | http://localhost:8081 |
-| Kafka Broker    | localhost:9092 |
-
-⚠️ These URLs are for local development only.  
-They do not expose sensitive data and are safe to include in documentation.
+1. **Stock Market API** provides real-time financial data.
+2. **Python Producer Service** extracts and publishes structured events.
+3. **Apache Kafka** acts as the distributed streaming backbone.
+4. **Consumer Service** processes streaming events.
+5. **PostgreSQL** persists structured stock data.
+6. **Prometheus** monitors Kafka and system metrics.
 
 ---
 
-## ⚙️ Environment Variables
+# 🧠 Advanced Architecture Design
 
-Create a `.env` file in the root directory:
+## 1️⃣ Event-Driven Architecture
 
-```env
-API_KEY=your_alpha_vantage_key
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-```
+The system follows an event-driven model:
 
-⚠️ `.env` is excluded via `.gitignore` and must never be committed.
+- Producers publish events asynchronously.
+- Kafka decouples producers and consumers.
+- Consumers independently process data streams.
+- Services scale independently without tight coupling.
+
+This architecture improves throughput, resilience, and modularity.
 
 ---
 
-## ▶️ How to Run the Project
+## 2️⃣ Scalability Strategy
 
-### 1️⃣ Clone the repository
+### 🔹 Horizontal Scaling
+
+- Kafka topics support partition-based scaling.
+- Consumers scale via consumer groups.
+- Docker enables service replication.
+- Database scaling via read replicas.
+
+### 🔹 Vertical Scaling
+
+- Kafka broker memory tuning (JVM configuration).
+- PostgreSQL resource optimization.
+- Container CPU and memory allocation adjustments.
+
+---
+
+## 3️⃣ Fault Tolerance & Reliability
+
+- Kafka ensures message durability.
+- Offset management prevents duplicate processing.
+- Docker restart policies improve service resilience.
+- Persistent volumes protect stored data.
+- System components operate independently to reduce cascading failure risk.
+
+---
+
+## 4️⃣ Observability & Monitoring
+
+Monitoring is integrated at the infrastructure layer:
+
+- Kafka JMX metrics exposed.
+- Prometheus scrapes broker metrics.
+- Consumer lag tracking.
+- JVM memory usage monitoring.
+- Throughput and performance visibility.
+
+Observability enables:
+
+- Performance analysis
+- Bottleneck detection
+- Capacity planning
+- Production-readiness validation
+
+---
+
+# 🛠️ Technology Stack
+
+| Layer                  | Technology |
+|------------------------|------------|
+| Programming Language   | Python |
+| Streaming Platform     | Apache Kafka |
+| Messaging Pattern      | Producer–Consumer |
+| Database               | PostgreSQL |
+| Containerization       | Docker |
+| Orchestration          | Docker Compose |
+| Monitoring             | Prometheus + JMX Exporter |
+| Configuration          | Environment Variables (.env) |
+| Version Control        | Git |
+
+---
+
+# 📂 Project Structure
 
 ```bash
-git clone https://github.com/your-username/Real-Time-Stock-Market-Analyses.git
-cd Real-Time-Stock-Market-Analyses
-```
-
-### 2️⃣ Build and start services
-
-```bash
-docker compose up -d --build
-```
-
-### 3️⃣ Verify containers
-
-```bash
-docker ps
-```
-
-### 4️⃣ View logs (example)
-
-```bash
-docker logs consumer
-```
-
----
-
-## 🔄 Producer Behavior
-
-The producer:
-
-- Fetches TSLA, MSFT, and GOOGL stock data  
-- Runs continuously in a loop  
-- Respects Alpha Vantage free tier limits  
-- Handles API errors and rate limits gracefully  
-- Sleeps between cycles to prevent throttling  
-
-Example log output:
-
-```
-INFO - Starting new fetch cycle...
-INFO - TSLA stock successfully loaded
-INFO - Fetched 120 records
-INFO - Sleeping for 90 seconds...
-```
-
----
-
-## 🚦 API Rate Limiting
-
-The system handles:
-
-- 1 request per second limit  
-- 25 requests per day limit  
-- Invalid API key errors  
-- Premium endpoint warnings  
-
-If the rate limit is reached, the producer waits before retrying.
-
----
-
-## 🚧 Current Status
-
-### ✅ Completed
-
-- Dockerized microservices  
-- Kafka broker (KRaft mode)  
-- Spark cluster setup  
-- PostgreSQL containerized  
-- Alpha Vantage API integration  
-- Rate-limit handling  
-- Continuous producer loop  
-- Environment variable security  
-- Kafka UI integration  
-- pgAdmin integration  
-
-### 🔜 In Progress / Next Steps
-
-- Connect producer to Kafka topic  
-- Implement Spark Structured Streaming  
-- Write processed data to PostgreSQL  
-- Build Power BI dashboard  
-- Add schema validation  
-- Add unit tests  
-- Add CI/CD pipeline  
-- Deploy to cloud (AWS / Azure / GCP)  
-
----
-
-## 🧠 Engineering Concepts Demonstrated
-
-- Real-time streaming architecture  
-- Event-driven processing  
-- Distributed computing (Spark cluster)  
-- Container orchestration  
-- Environment-based configuration  
-- Fault-tolerant API consumption  
-- Infrastructure as Code (Docker Compose)  
-
----
-
-## 🛡️ Security Notes
-
-- No API keys stored in repository  
-- `.env` file excluded via `.gitignore`  
-- Services run on internal Docker network  
-- PostgreSQL not publicly exposed  
-- Localhost ports are development-only  
-
----
-
-## 📂 Project Structure
-
-```
 .
-├── Producer/
-│   ├── config.py
-│   ├── extract.py
-│   └── main.py
+├── extract.py
+├── producer_setup.py
+├── consumer.py
+├── main.py
+├── config.py
 ├── Dockerfile
 ├── compose.yml
 ├── requirements.txt
-├── .gitignore
+├── .env
+├── prometheus.yml
+├── prom-jmx-agent-config.yml
+├── stock_data_logs.log
+├── img/
+│   └── real_time_pipeline.png
 └── README.md
 ```
 
 ---
 
-## 📈 Future Improvements
+# ⚙️ Deployment Guide
 
-- Kafka topic partitioning strategy  
-- Dead-letter queue handling  
-- Monitoring (Prometheus + Grafana)  
-- Logging centralization  
-- Kubernetes deployment  
-- Production-ready configuration profiles  
+## 1️⃣ Clone Repository
+
+```bash
+git clone <repository-url>
+cd project-directory
+```
 
 ---
 
-## 👨‍💻 Author
+## 2️⃣ Configure Environment Variables
 
-Tony Kwofie  
-Real-Time Data Engineering Project  
-2026
+Create `.env` file:
+
+```env
+API_KEY=your_stock_api_key
+```
+
+---
+
+## 3️⃣ Start Infrastructure
+
+```bash
+docker-compose up --build
+```
+
+This provisions:
+
+- Zookeeper
+- Apache Kafka
+- PostgreSQL
+- Application Service
+- Prometheus Monitoring
+
+---
+
+# 📊 Monitoring Dashboard
+
+Access Prometheus:
+
+```
+http://localhost:9090
+```
+
+### Key Metrics Monitored
+
+- Broker throughput
+- Topic performance
+- Consumer lag
+- JVM memory usage
+- Message production rate
+
+---
+
+# 📈 Core System Capabilities
+
+- Real-time stock data ingestion
+- Distributed streaming architecture
+- Modular producer-consumer design
+- Containerized infrastructure
+- Persistent relational storage
+- Log-based observability
+- Infrastructure-level monitoring
+
+---
+
+# 🔐 Security & Configuration
+
+- API key secured via environment variables
+- Sensitive files excluded via `.gitignore`
+- Centralized configuration management
+- Service isolation via containerization
+
+---
+
+# 🎯 Engineering Competencies Demonstrated
+
+This project reflects hands-on experience in:
+
+- Distributed systems engineering
+- Streaming data architecture
+- Kafka-based event processing
+- Dockerized infrastructure deployment
+- Observability engineering
+- Production-style system design
+- Real-time data persistence workflows
+
+---
+
+# 🚀 Future Enhancements
+
+- Apache Spark Structured Streaming integration
+- Schema registry (Avro / Protobuf)
+- Dead-letter queue implementation
+- Kafka cluster scaling
+- Cloud-native deployment (AWS / GCP)
+- CI/CD pipeline automation
+- Data validation and quality layer
+
+---
+
+# 🏁 Conclusion
+
+This platform represents a production-grade real-time data engineering system built using industry-standard tools and distributed system design principles.
+
+It models financial data streaming infrastructure with emphasis on scalability, reliability, modularity, and observability — reflecting real-world engineering environments.
